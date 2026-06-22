@@ -15,6 +15,8 @@
 
 # %%
 import _setup  # noqa: F401  -- adds scripts/ to sys.path (file-relative)
+import json
+from pathlib import Path
 import polars as pl
 from deltalake import DeltaTable, write_deltalake
 from lakehouse import path, reset
@@ -46,6 +48,17 @@ print(pl.from_arrow(dt.to_pyarrow_table()))
 print("\nHistory:")
 for h in dt.history():
     print(f"  v{h['version']}  {h['operation']}  {h.get('operationMetrics', {})}")
+
+# Submission evidence: show the real transaction-log file and its actions.
+log_files = sorted((Path(table_path) / "_delta_log").glob("*.json"))
+print("\n_delta_log JSON files:")
+for log_file in log_files:
+    print(f"  {log_file.name}")
+print(f"\nActions in {log_files[0].name}:")
+with log_files[0].open(encoding="utf-8") as fh:
+    for line in fh:
+        action = json.loads(line)
+        print(f"  {next(iter(action))}: {str(action)[:180]}")
 
 # %% [markdown]
 # ## 3. Schema enforcement — try to write a wrong schema
@@ -81,7 +94,7 @@ duckdb.sql(f"SELECT tier, count(*) FROM delta_scan('{table_path}') GROUP BY 1").
 
 # %% [markdown]
 # ## ✅ Deliverable check
-# - [ ] `_delta_log/` contains JSON files
-# - [ ] Schema enforcement blocked the bad write
-# - [ ] schema_mode="merge" added the `tier` column
-# - [ ] DuckDB query returned 2 tier groups
+# - [x] `_delta_log/` contains JSON files
+# - [x] Schema enforcement blocked the bad write
+# - [x] schema_mode="merge" added the `tier` column
+# - [x] DuckDB query returned 2 tier groups
